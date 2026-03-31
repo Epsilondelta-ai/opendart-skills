@@ -141,6 +141,29 @@ class OpenDartClientTests(unittest.TestCase):
             self.assertEqual(rows[0].corp_name, 'AT&T Korea')
             self.assertIn('AT&amp;T Korea', Path(tmpdir, 'corpCode.xml').read_text(encoding='utf-8'))
 
+    def test_search_auto_refreshes_when_local_cache_is_missing_and_api_key_exists(self) -> None:
+        corp_xml = (
+            '<result><list><corp_code>00126380</corp_code><corp_name>AT&amp;T Korea</corp_name>'
+            '<corp_eng_name>AT&amp;T Korea</corp_eng_name><stock_code>005930</stock_code>'
+            '<modify_date>20240101</modify_date></list></result>'
+        )
+        buf = BytesIO()
+        with ZipFile(buf, 'w') as zf:
+            zf.writestr('CORPCODE.xml', corp_xml)
+
+        def opener(request, timeout=30):
+            return FakeResponse(buf.getvalue())
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            client = OpenDartClient(api_key='key', opener=opener, cache_dir=tmpdir)
+
+            rows = client.search_corp_codes(name='AT&T')
+
+            self.assertEqual(rows[0].corp_name, 'AT&T Korea')
+            self.assertTrue(Path(tmpdir, 'corpCode.xml').exists())
+            self.assertTrue(Path(tmpdir, 'corpCode.zip').exists())
+            self.assertTrue(Path(tmpdir, 'corpCode.records.json').exists())
+
     def test_search_falls_back_to_records_snapshot_when_zip_is_corrupt(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             Path(tmpdir, 'corpCode.xml').write_text(

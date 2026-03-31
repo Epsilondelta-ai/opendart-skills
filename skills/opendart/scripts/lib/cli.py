@@ -41,7 +41,7 @@ def cmd_corp_search(args: argparse.Namespace) -> int:
         if status["reason"] == "missing_xml_cache" and not status.get("archive_exists") and not status.get("records_exists"):
             print_json({"message": "missing corp-code cache; run `corp-code refresh` first", "cache_status": status, "results": []})
             return 2
-        return runtime_error(str(exc), hint="Refresh corp-code cache to rebuild a valid local cache set.")
+        return runtime_error(str(exc), hint="Refresh corp-code cache or provide OPENDART_API_KEY so search can auto-refresh.")
     status = client.corp_code_status()
     if status["stale"]:
         print(f"warning: corp-code cache is stale ({status['reason']}); run `corp-code refresh` before relying on these results.", file=sys.stderr)

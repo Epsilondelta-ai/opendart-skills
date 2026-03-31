@@ -86,6 +86,16 @@ class OpenDartClient:
         corp_code_xml_path(self.cache_dir).write_bytes(serialize_corp_code_xml(rows))
         return rows
 
+    def _recover_or_refresh_corp_codes(self) -> list[CorpRecord]:
+        try:
+            return self._repair_xml_cache()
+        except ValueError as repair_exc:
+            if self.api_key:
+                return self.fetch_corp_codes()
+            raise ValueError(
+                "corp-code cache is missing or invalid and could not be repaired locally; run `corp-code refresh` or provide OPENDART_API_KEY so search can auto-refresh."
+            ) from repair_exc
+
     def fetch_corp_codes(self) -> list[CorpRecord]:
         spec = get_endpoint("corp_code")
         zip_bytes = self.request_binary(spec.path)
@@ -103,16 +113,16 @@ class OpenDartClient:
     def load_cached_corp_codes(self) -> list[CorpRecord]:
         path = corp_code_xml_path(self.cache_dir)
         if not path.exists():
-            return self._repair_xml_cache()
+            return self._recover_or_refresh_corp_codes()
         xml_bytes = path.read_bytes()
         try:
             return parse_corp_code_xml(xml_bytes)
         except ParseError:
             try:
-                return self._repair_xml_cache()
+                return self._recover_or_refresh_corp_codes()
             except ValueError as repair_exc:
                 raise ValueError(
-                    "corp-code XML cache is invalid and could not be repaired from corpCode.zip or the local records snapshot; run `corp-code refresh`."
+                    "corp-code XML cache is invalid and could not be repaired locally; run `corp-code refresh` or provide OPENDART_API_KEY so search can auto-refresh."
                 ) from repair_exc
 
     def search_corp_codes(self, *, name: str | None = None, stock_code: str | None = None, exact: bool = False, limit: int = 20) -> list[CorpRecord]:
