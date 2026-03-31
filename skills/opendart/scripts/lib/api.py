@@ -7,8 +7,10 @@ from typing import Callable
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
+from xml.etree.ElementTree import ParseError
+
 from .cache import corp_code_archive_path, corp_code_cache_status, corp_code_xml_path, write_corp_code_metadata
-from .corpcode import CorpRecord, load_records_from_zip, parse_corp_code_xml, search_records
+from .corpcode import CorpRecord, extract_corp_code_xml, parse_corp_code_xml, search_records
 from .endpoint_catalog import get_endpoint
 from .errors import ensure_success
 
@@ -54,20 +56,9 @@ class OpenDartClient:
         spec = get_endpoint("corp_code")
         zip_bytes = self.request_binary(spec.path)
         corp_code_archive_path(self.cache_dir).write_bytes(zip_bytes)
-        rows = load_records_from_zip(zip_bytes)
-        xml_body = "\n".join(
-            (
-                "  <list>"
-                f"<corp_code>{row.corp_code}</corp_code>"
-                f"<corp_name>{row.corp_name}</corp_name>"
-                f"<corp_eng_name>{row.corp_eng_name}</corp_eng_name>"
-                f"<stock_code>{row.stock_code}</stock_code>"
-                f"<modify_date>{row.modify_date}</modify_date>"
-                "</list>"
-            )
-            for row in rows
-        )
-        corp_code_xml_path(self.cache_dir).write_text(f"<result>\n{xml_body}\n</result>\n", encoding="utf-8")
+        xml_bytes = extract_corp_code_xml(zip_bytes)
+        corp_code_xml_path(self.cache_dir).write_bytes(xml_bytes)
+        rows = parse_corp_code_xml(xml_bytes)
         write_corp_code_metadata(self.cache_dir)
         return rows
 
@@ -78,7 +69,18 @@ class OpenDartClient:
         path = corp_code_xml_path(self.cache_dir)
         if not path.exists():
             return []
-        return parse_corp_code_xml(path.read_bytes())
+        xml_bytes = path.read_bytes()
+        try:
+            return parse_corp_code_xml(xml_bytes)
+        except ParseError as exc:
+            archive_path = corp_code_archive_path(self.cache_dir)
+            if not archive_path.exists():
+                raise ValueError(
+                    "corp-code XML cache is invalid and could not be repaired because corpCode.zip is missing; run `corp-code refresh`."
+                ) from exc
+            repaired_xml = extract_corp_code_xml(archive_path.read_bytes())
+            path.write_bytes(repaired_xml)
+            return parse_corp_code_xml(repaired_xml)
 
     def search_corp_codes(self, *, name: str | None = None, stock_code: str | None = None, exact: bool = False, limit: int = 20) -> list[CorpRecord]:
         return search_records(self.load_cached_corp_codes(), name=name, stock_code=stock_code, exact=exact, limit=limit)

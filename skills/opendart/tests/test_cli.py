@@ -38,6 +38,18 @@ class CliTests(unittest.TestCase):
             self.assertTrue(payload['stale'])
             self.assertIn('Refresh', payload['hint'])
 
+    def test_corp_code_search_reports_unrepairable_invalid_cache(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            Path(tmpdir, 'corpCode.xml').write_text('<result><list><corp_name>AT&T</corp_name></list></result>', encoding='utf-8')
+            write_corp_code_metadata(tmpdir)
+            buffer = StringIO()
+            with redirect_stdout(buffer):
+                code = main(['--cache-dir', tmpdir, 'corp-code', 'search', '--name', 'AT&T'])
+            self.assertEqual(code, 2)
+            payload = json.loads(buffer.getvalue())
+            self.assertIn('could not be repaired', payload['message'])
+            self.assertIn('valid XML/ZIP pair', payload['hint'])
+
     def test_company_reports_missing_key(self) -> None:
         buffer = StringIO()
         with patch.dict('os.environ', {}, clear=True):

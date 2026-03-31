@@ -40,7 +40,10 @@ def cmd_corp_search(args: argparse.Namespace) -> int:
         return 2
     if status["stale"]:
         print(f"warning: corp-code cache is stale ({status['reason']}); run `corp-code refresh` before relying on these results.", file=sys.stderr)
-    rows = client.search_corp_codes(name=args.name, stock_code=args.stock_code, exact=args.exact, limit=args.limit)
+    try:
+        rows = client.search_corp_codes(name=args.name, stock_code=args.stock_code, exact=args.exact, limit=args.limit)
+    except ValueError as exc:
+        return runtime_error(str(exc), hint="Refresh corp-code cache to rebuild a valid XML/ZIP pair.")
     print_json({"cache_status": status, "results": [asdict(row) for row in rows]})
     return 0
 
