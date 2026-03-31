@@ -47,6 +47,22 @@ def load_records_from_zip(zip_bytes: bytes) -> list[CorpRecord]:
     return parse_corp_code_xml(extract_corp_code_xml(zip_bytes))
 
 
+def serialize_corp_code_xml(records: list[CorpRecord]) -> bytes:
+    root = ET.Element("result")
+    for record in records:
+        node = ET.SubElement(root, "list")
+        for tag, value in (
+            ("corp_code", record.corp_code),
+            ("corp_name", record.corp_name),
+            ("corp_eng_name", record.corp_eng_name),
+            ("stock_code", record.stock_code),
+            ("modify_date", record.modify_date),
+        ):
+            child = ET.SubElement(node, tag)
+            child.text = value
+    return ET.tostring(root, encoding="utf-8", xml_declaration=False)
+
+
 def search_records(
     records: list[CorpRecord],
     *,

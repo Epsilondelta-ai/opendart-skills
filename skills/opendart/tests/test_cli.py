@@ -48,7 +48,7 @@ class CliTests(unittest.TestCase):
             self.assertEqual(code, 2)
             payload = json.loads(buffer.getvalue())
             self.assertIn('could not be repaired', payload['message'])
-            self.assertIn('valid XML/ZIP pair', payload['hint'])
+            self.assertIn('valid local cache set', payload['hint'])
 
     def test_company_reports_missing_key(self) -> None:
         buffer = StringIO()

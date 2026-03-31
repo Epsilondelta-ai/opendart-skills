@@ -2,15 +2,16 @@ from __future__ import annotations
 
 import json
 import os
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from typing import Callable
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
+from zipfile import BadZipFile
 
 from xml.etree.ElementTree import ParseError
 
-from .cache import corp_code_archive_path, corp_code_cache_status, corp_code_xml_path, write_corp_code_metadata
-from .corpcode import CorpRecord, extract_corp_code_xml, parse_corp_code_xml, search_records
+from .cache import corp_code_archive_path, corp_code_cache_status, corp_code_records_path, corp_code_xml_path, write_corp_code_metadata
+from .corpcode import CorpRecord, extract_corp_code_xml, parse_corp_code_xml, search_records, serialize_corp_code_xml
 from .endpoint_catalog import get_endpoint
 from .errors import ensure_success
 
@@ -52,6 +53,39 @@ class OpenDartClient:
     def request_binary(self, path: str, **params: object | None) -> bytes:
         return self._request_bytes(path, params)
 
+    def _write_records_snapshot(self, rows: list[CorpRecord]) -> None:
+        corp_code_records_path(self.cache_dir).write_text(
+            json.dumps([asdict(row) for row in rows], ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+
+    def _load_records_snapshot(self) -> list[CorpRecord]:
+        path = corp_code_records_path(self.cache_dir)
+        if not path.exists():
+            raise FileNotFoundError(path)
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        return [CorpRecord(**row) for row in payload]
+
+    def _repair_xml_cache(self) -> list[CorpRecord]:
+        archive_path = corp_code_archive_path(self.cache_dir)
+        if archive_path.exists():
+            try:
+                repaired_xml = extract_corp_code_xml(archive_path.read_bytes())
+                rows = parse_corp_code_xml(repaired_xml)
+                corp_code_xml_path(self.cache_dir).write_bytes(repaired_xml)
+                self._write_records_snapshot(rows)
+                return rows
+            except (BadZipFile, ParseError, ValueError):
+                pass
+        try:
+            rows = self._load_records_snapshot()
+        except (FileNotFoundError, json.JSONDecodeError, TypeError, ValueError) as exc:
+            raise ValueError(
+                "corp-code cache is missing or invalid and could not be repaired from corpCode.zip or the local records snapshot; run `corp-code refresh`."
+            ) from exc
+        corp_code_xml_path(self.cache_dir).write_bytes(serialize_corp_code_xml(rows))
+        return rows
+
     def fetch_corp_codes(self) -> list[CorpRecord]:
         spec = get_endpoint("corp_code")
         zip_bytes = self.request_binary(spec.path)
@@ -59,6 +93,7 @@ class OpenDartClient:
         xml_bytes = extract_corp_code_xml(zip_bytes)
         corp_code_xml_path(self.cache_dir).write_bytes(xml_bytes)
         rows = parse_corp_code_xml(xml_bytes)
+        self._write_records_snapshot(rows)
         write_corp_code_metadata(self.cache_dir)
         return rows
 
@@ -68,19 +103,17 @@ class OpenDartClient:
     def load_cached_corp_codes(self) -> list[CorpRecord]:
         path = corp_code_xml_path(self.cache_dir)
         if not path.exists():
-            return []
+            return self._repair_xml_cache()
         xml_bytes = path.read_bytes()
         try:
             return parse_corp_code_xml(xml_bytes)
-        except ParseError as exc:
-            archive_path = corp_code_archive_path(self.cache_dir)
-            if not archive_path.exists():
+        except ParseError:
+            try:
+                return self._repair_xml_cache()
+            except ValueError as repair_exc:
                 raise ValueError(
-                    "corp-code XML cache is invalid and could not be repaired because corpCode.zip is missing; run `corp-code refresh`."
-                ) from exc
-            repaired_xml = extract_corp_code_xml(archive_path.read_bytes())
-            path.write_bytes(repaired_xml)
-            return parse_corp_code_xml(repaired_xml)
+                    "corp-code XML cache is invalid and could not be repaired from corpCode.zip or the local records snapshot; run `corp-code refresh`."
+                ) from repair_exc
 
     def search_corp_codes(self, *, name: str | None = None, stock_code: str | None = None, exact: bool = False, limit: int = 20) -> list[CorpRecord]:
         return search_records(self.load_cached_corp_codes(), name=name, stock_code=stock_code, exact=exact, limit=limit)

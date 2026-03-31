@@ -35,15 +35,16 @@ def cmd_corp_refresh(args: argparse.Namespace) -> int:
 def cmd_corp_search(args: argparse.Namespace) -> int:
     client = OpenDartClient(api_key=args.api_key, cache_dir=args.cache_dir)
     status = client.corp_code_status()
-    if status["reason"] == "missing_xml_cache":
-        print_json({"message": "missing corp-code cache; run `corp-code refresh` first", "cache_status": status, "results": []})
-        return 2
-    if status["stale"]:
-        print(f"warning: corp-code cache is stale ({status['reason']}); run `corp-code refresh` before relying on these results.", file=sys.stderr)
     try:
         rows = client.search_corp_codes(name=args.name, stock_code=args.stock_code, exact=args.exact, limit=args.limit)
     except ValueError as exc:
-        return runtime_error(str(exc), hint="Refresh corp-code cache to rebuild a valid XML/ZIP pair.")
+        if status["reason"] == "missing_xml_cache" and not status.get("archive_exists") and not status.get("records_exists"):
+            print_json({"message": "missing corp-code cache; run `corp-code refresh` first", "cache_status": status, "results": []})
+            return 2
+        return runtime_error(str(exc), hint="Refresh corp-code cache to rebuild a valid local cache set.")
+    status = client.corp_code_status()
+    if status["stale"]:
+        print(f"warning: corp-code cache is stale ({status['reason']}); run `corp-code refresh` before relying on these results.", file=sys.stderr)
     print_json({"cache_status": status, "results": [asdict(row) for row in rows]})
     return 0
 

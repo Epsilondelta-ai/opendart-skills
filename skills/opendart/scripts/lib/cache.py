@@ -32,6 +32,10 @@ def corp_code_xml_path(base_dir: str | Path | None = None) -> Path:
     return cache_root(base_dir) / "corpCode.xml"
 
 
+def corp_code_records_path(base_dir: str | Path | None = None) -> Path:
+    return cache_root(base_dir) / "corpCode.records.json"
+
+
 def corp_code_meta_path(base_dir: str | Path | None = None) -> Path:
     return cache_root(base_dir) / "corpCode.meta.json"
 
@@ -98,12 +102,16 @@ def _hint_for_reason(reason: str) -> str:
 def corp_code_cache_status(base_dir: str | Path | None = None, *, now: datetime | None = None) -> dict[str, object]:
     xml_path = corp_code_xml_path(base_dir)
     archive_path = corp_code_archive_path(base_dir)
+    records_path = corp_code_records_path(base_dir)
     meta = read_corp_code_metadata(base_dir)
     reference = now or datetime.now(UTC)
     result = {
         "exists": xml_path.exists(),
         "xml_path": str(xml_path),
         "archive_path": str(archive_path),
+        "archive_exists": archive_path.exists(),
+        "records_path": str(records_path),
+        "records_exists": records_path.exists(),
         "meta_path": str(corp_code_meta_path(base_dir)),
         "ttl_days": corp_code_ttl_days(),
         "stale": False,

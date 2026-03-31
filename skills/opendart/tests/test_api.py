@@ -61,6 +61,7 @@ class OpenDartClientTests(unittest.TestCase):
             rows = client.fetch_corp_codes()
             self.assertEqual(rows[0].corp_name, 'AT&T Korea')
             self.assertIn('AT&amp;T Korea', Path(tmpdir, 'corpCode.xml').read_text(encoding='utf-8'))
+            self.assertIn('AT&T Korea', Path(tmpdir, 'corpCode.records.json').read_text(encoding='utf-8'))
             self.assertFalse(client.corp_code_status()['stale'])
 
     def test_search_repairs_invalid_xml_cache_from_zip_archive(self) -> None:
@@ -79,6 +80,90 @@ class OpenDartClientTests(unittest.TestCase):
                 encoding='utf-8',
             )
             Path(tmpdir, 'corpCode.zip').write_bytes(buf.getvalue())
+            client = OpenDartClient(cache_dir=tmpdir)
+
+            rows = client.search_corp_codes(name='AT&T')
+
+            self.assertEqual(rows[0].corp_name, 'AT&T Korea')
+            self.assertIn('AT&amp;T Korea', Path(tmpdir, 'corpCode.xml').read_text(encoding='utf-8'))
+
+    def test_search_repairs_invalid_xml_cache_from_records_snapshot(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            Path(tmpdir, 'corpCode.xml').write_text(
+                '<result><list><corp_code>00126380</corp_code><corp_name>AT&T Korea</corp_name></list></result>',
+                encoding='utf-8',
+            )
+            Path(tmpdir, 'corpCode.records.json').write_text(
+                json.dumps(
+                    [
+                        {
+                            'corp_code': '00126380',
+                            'corp_name': 'AT&T Korea',
+                            'corp_eng_name': 'AT&T Korea',
+                            'stock_code': '005930',
+                            'modify_date': '20240101',
+                        }
+                    ],
+                    ensure_ascii=False,
+                    indent=2,
+                ),
+                encoding='utf-8',
+            )
+            client = OpenDartClient(cache_dir=tmpdir)
+
+            rows = client.search_corp_codes(name='AT&T')
+
+            self.assertEqual(rows[0].corp_name, 'AT&T Korea')
+            self.assertIn('AT&amp;T Korea', Path(tmpdir, 'corpCode.xml').read_text(encoding='utf-8'))
+
+    def test_search_repairs_missing_xml_cache_from_records_snapshot(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            Path(tmpdir, 'corpCode.records.json').write_text(
+                json.dumps(
+                    [
+                        {
+                            'corp_code': '00126380',
+                            'corp_name': 'AT&T Korea',
+                            'corp_eng_name': 'AT&T Korea',
+                            'stock_code': '005930',
+                            'modify_date': '20240101',
+                        }
+                    ],
+                    ensure_ascii=False,
+                    indent=2,
+                ),
+                encoding='utf-8',
+            )
+            client = OpenDartClient(cache_dir=tmpdir)
+
+            rows = client.search_corp_codes(name='AT&T')
+
+            self.assertEqual(rows[0].corp_name, 'AT&T Korea')
+            self.assertIn('AT&amp;T Korea', Path(tmpdir, 'corpCode.xml').read_text(encoding='utf-8'))
+
+    def test_search_falls_back_to_records_snapshot_when_zip_is_corrupt(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            Path(tmpdir, 'corpCode.xml').write_text(
+                '<result><list><corp_code>00126380</corp_code><corp_name>AT&T Korea</corp_name></list></result>',
+                encoding='utf-8',
+            )
+            Path(tmpdir, 'corpCode.zip').write_bytes(b'not-a-zip')
+            Path(tmpdir, 'corpCode.records.json').write_text(
+                json.dumps(
+                    [
+                        {
+                            'corp_code': '00126380',
+                            'corp_name': 'AT&T Korea',
+                            'corp_eng_name': 'AT&T Korea',
+                            'stock_code': '005930',
+                            'modify_date': '20240101',
+                        }
+                    ],
+                    ensure_ascii=False,
+                    indent=2,
+                ),
+                encoding='utf-8',
+            )
             client = OpenDartClient(cache_dir=tmpdir)
 
             rows = client.search_corp_codes(name='AT&T')
