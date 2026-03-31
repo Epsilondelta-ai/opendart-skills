@@ -1,16 +1,23 @@
-# Auth, corp_code, and error handling
+# Auth, corp_code, cache, and error handling
 
 ## Auth rules
-- OpenDART uses `crtfc_key` as a 40-character API key.
-- Supply the key at runtime through `OPENDART_API_KEY`; never commit secrets.
-- The live smoke lane is **opt-in** and must skip cleanly when the key is absent.
-- If setup is requested, tell the user to provide their own key rather than inventing one.
+- OpenDART uses `crtfc_key` as the API key.
+- Supply the key at runtime through `OPENDART_API_KEY` or an explicit CLI argument.
+- Never commit secrets.
+- Live tests are opt-in and skip by default when `OPENDART_API_KEY` is absent.
 
 ## corp_code rules
 - Many OpenDART queries require `corp_code`.
 - If only a company name is known, resolve it first with the corp-code dataset.
-- Use `python3 -m shared.opendart_common.cli corp-code refresh` and `... corp-code search --name <회사명>` for repeatable corp-code flows.
-- Use `python3 -m shared.opendart_common.cli corp-code status` to check freshness before trusting cached lookups.
+- Use the local helper:
+  - `python3 skills/opendart/scripts/opendart_cli.py corp-code refresh`
+  - `python3 skills/opendart/scripts/opendart_cli.py corp-code search --name <회사명>`
+  - `python3 skills/opendart/scripts/opendart_cli.py corp-code status`
+
+## Cache freshness
+- Default corp-code TTL is 7 days unless `OPENDART_CORP_CODE_TTL_DAYS` overrides it.
+- Treat missing cache, missing metadata, and expired TTL as refresh signals.
+- Refresh stale corp-code data before debugging downstream no-data or invalid-code cases.
 
 ## Common status codes
 - `000`: 정상
@@ -28,8 +35,7 @@
 - `901`: 개인정보 보유기간 만료 계정
 
 ## Handling guidance
-- `013` often means the request was valid but there is no result.
-- `020` means back off, cache, and retry later rather than looping aggressively.
-- `800` and `900` are operational issues; retry conservatively.
-- `100`/`101` usually point to request construction mistakes.
-- Live smoke tests should document quota usage, possible `013`, and maintenance windows instead of treating every non-success as a code defect.
+- `013` often means a valid request returned no data for the chosen period.
+- `020` means back off, cache, and retry later.
+- `800` and `900` are operational failures; retry conservatively.
+- `100` and `101` usually mean request-construction mistakes.

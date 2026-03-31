@@ -1,7 +1,0 @@
-interface:
-  display_name: "OpenDART"
-  short_description: "OpenDART overview, auth, and routing"
-  default_prompt: "Use $opendart to route an OpenDART question, resolve corp_code safely, and choose the right specialist skill."
-
-policy:
-  allow_implicit_invocation: true

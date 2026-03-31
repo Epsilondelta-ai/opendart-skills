@@ -1,34 +1,34 @@
 ---
 name: opendart
-description: General OpenDART usage, auth setup, corp_code resolution, endpoint selection, and routing to detailed areas.
+description: Generic OpenDART skill for corp_code resolution, disclosure search, periodic-report facts, financial data, equity disclosures, material events, and registration statements.
 ---
 
 # OpenDART
 
-Use this umbrella skill for broad OpenDART questions, first-time setup, auth/key handling, corp_code lookup, and endpoint selection.
+This is a self-contained generic skill for working with OpenDART.
 
 ## Use when
-- The user says OpenDART, DART, 공시, 기업개황, corp_code, or asks which endpoint/family to use.
-- The request spans multiple OpenDART areas.
-- You need to decide whether a specialist skill should handle the task.
+- You need OpenDART auth or `corp_code` guidance.
+- You need to route a request across OpenDART families.
+- You need disclosure, periodic-report, financial, equity, material-event, or registration-statement workflows.
+- You want repeatable helper-script support from inside the skill package itself.
 
-## Route away when
-- 공시정보 detail work belongs in `opendart-disclosures`
-- 정기보고서 주요정보 belongs in `opendart-periodic-reports`
-- 정기보고서 재무정보 or 활용마당 belongs in `opendart-financials`
-- 지분공시 종합정보 belongs in `opendart-equity`
-- 주요사항보고서 주요정보 belongs in `opendart-material-events`
-- 증권신고서 주요정보 belongs in `opendart-registration`
+## Internal routing
+Use the references in this skill instead of depending on separate top-level specialist skills.
 
-## Workflow
-1. Read `references/service-overview.md` for the OpenDART mental model.
-2. Read `references/auth-corpcode-errors.md` before any API call.
-3. Use `references/routing-matrix.md` to pick the specialist skill when the request is domain-specific.
-4. For repeatable calls or corp-code resolution, use `python3 skills/opendart/scripts/opendart_cli.py ...` or `python3 -m shared.opendart_common.cli ...`.
-5. Use `references/guide-family-map.md` to keep family ownership aligned.
-6. Use `references/frontmatter-manifest.md` when updating skill metadata.
+1. `references/service-overview.md` — OpenDART mental model
+2. `references/auth-corpcode-errors.md` — auth, `corp_code`, cache, and status handling
+3. `references/family-map.md` — OpenDART family ownership inside this single skill
+4. `references/routing-matrix.md` — prompt-to-family routing
+5. `references/endpoint-catalog.md` — representative endpoint catalog
+6. `references/generic-usage.md` — how to use/copy this skill as a portable package
+7. `references/family-*.md` — family-specific notes and examples
+
+## Script entry points
+- `python3 skills/opendart/scripts/opendart_cli.py --help`
+- `python3 skills/opendart/scripts/check_guide_sync.py`
 
 ## Guardrails
-- Never store or echo real `crtfc_key` values in repo files.
-- Prefer the specialist skill when the request clearly names a domain family.
-- Keep this umbrella skill short; the references carry the details.
+- Never store or echo a real `crtfc_key` in repo files.
+- Treat this skill directory as the portable package; do not depend on removed top-level helper layers.
+- Keep new logic under `scripts/` and new reference truth under `references/`.

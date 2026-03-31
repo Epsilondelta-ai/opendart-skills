@@ -1,7 +1,0 @@
-interface:
-  display_name: "OpenDART Material Events"
-  short_description: "OpenDART 주요사항보고서 주요정보"
-  default_prompt: "Use $opendart-material-events for 주요사항보고서 주요정보 workflows."
-
-policy:
-  allow_implicit_invocation: true
