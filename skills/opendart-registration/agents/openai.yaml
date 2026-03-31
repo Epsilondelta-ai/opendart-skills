@@ -1,0 +1,7 @@
+interface:
+  display_name: "OpenDART Registration"
+  short_description: "OpenDART 증권신고서 주요정보"
+  default_prompt: "Use $opendart-registration for 증권신고서 주요정보 workflows."
+
+policy:
+  allow_implicit_invocation: true

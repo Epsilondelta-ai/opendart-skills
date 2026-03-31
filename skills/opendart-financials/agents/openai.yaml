@@ -1,0 +1,7 @@
+interface:
+  display_name: "OpenDART Financials"
+  short_description: "OpenDART 재무제표, 지표, 활용마당"
+  default_prompt: "Use $opendart-financials for 정기보고서 재무정보, 재무제표, 재무지표, and 활용마당 query/download workflows."
+
+policy:
+  allow_implicit_invocation: true

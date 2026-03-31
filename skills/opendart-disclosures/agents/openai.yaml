@@ -1,0 +1,7 @@
+interface:
+  display_name: "OpenDART Disclosures"
+  short_description: "OpenDART 공시정보 search and filing lookup"
+  default_prompt: "Use $opendart-disclosures for 공시정보 search, filing lookup, and attachment/original-document retrieval."
+
+policy:
+  allow_implicit_invocation: true

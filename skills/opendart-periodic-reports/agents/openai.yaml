@@ -1,0 +1,7 @@
+interface:
+  display_name: "OpenDART Periodic Reports"
+  short_description: "OpenDART 정기보고서 주요정보"
+  default_prompt: "Use $opendart-periodic-reports for 정기보고서 주요정보 such as dividend, employee, executive, shareholder, and audit-related queries."
+
+policy:
+  allow_implicit_invocation: true

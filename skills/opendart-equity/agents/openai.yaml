@@ -1,0 +1,7 @@
+interface:
+  display_name: "OpenDART Equity"
+  short_description: "OpenDART 지분공시 종합정보"
+  default_prompt: "Use $opendart-equity for 지분공시 종합정보 such as major shareholding and insider holding workflows."
+
+policy:
+  allow_implicit_invocation: true
